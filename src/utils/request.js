@@ -20,7 +20,9 @@ function checkStatus(response) {
  * @return {object}           An object containing either "data" or "err"
  */
 export default function request(url, options) {
-  let newOptions = { ...options };
+  const controller = new AbortController();
+  const { signal } = controller;
+  let newOptions = { ...options, signal };
   if (['POST', 'PUT', 'DELETE'].includes(newOptions.method)) {
     if (!(newOptions.body instanceof FormData)) {
       newOptions.headers = {

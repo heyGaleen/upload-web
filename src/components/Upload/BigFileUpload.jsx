@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, Button, Table } from 'antd';
+import { Button, Table, Form } from 'antd';
+import FileUpload from '../FileUpload';
 import request from '../../utils/request';
 
 // 兼容性slice方法
@@ -8,10 +9,14 @@ const blobSlice =
 
 const CHUNK_SIZE = 2 * 1024 * 1024;
 let worker;
+let fileHash;
+
+const FormItem = Form.Item;
+
 const BigFileUpload = () => {
   const [file, setFile] = useState();
   const [fileChunkList, setFileChunkList] = useState([]);
-  const [fileHash, setFileHash] = useState('');
+  // const [fileHash, setFileHash] = useState('');
 
   // 生成文件切片
   const createFileChunks = (file, size = CHUNK_SIZE) => {
@@ -44,7 +49,7 @@ const BigFileUpload = () => {
       worker.onmessage = (e) => {
         const { hash } = e.data;
         if (hash) {
-          setFileHash(hash);
+          fileHash = hash;
           resolve(hash);
         }
       };
@@ -78,6 +83,7 @@ const BigFileUpload = () => {
     if (!file) return;
     const fileChunks = createFileChunks(file);
     const hash = await calculateHash(fileChunks);
+    console.log(hash, 'aaaaaaaa');
     const data = fileChunks.map(({ file: file1 }, i) => ({
       chunk: file1,
       hash: `${hash}-${i}`,
@@ -87,6 +93,17 @@ const BigFileUpload = () => {
     }));
     setFileChunkList(data);
     await uploadFileChunks(data);
+  };
+
+  const cancelUpload = () => {
+    controller.abort();
+  };
+
+  const handleChange = ({ file, fileList }) => {
+    setFile(file.originFileObj);
+    if (file.status === 'done') {
+      submit();
+    }
   };
 
   const columns = [
@@ -102,9 +119,12 @@ const BigFileUpload = () => {
   ];
   return (
     <>
-      <form style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
+      <Form layout="inline" style={{ marginBottom: 20 }}>
         <span style={{ marginRight: 10 }}>大文件上传-分片:</span>
-        <input
+        <FormItem name="url">
+          <FileUpload accept=".pdf,.zip,.dmg" onChange={handleChange} />
+        </FormItem>
+        {/* <input
           type="file"
           id="f1"
           name="file"
@@ -112,12 +132,16 @@ const BigFileUpload = () => {
             const [fileObj] = e.target.files;
             setFile(fileObj);
           }}
-        />
-        <br />
-        <Button type="primary" onClick={submit}>
-          点击上传
-        </Button>
-      </form>
+        /> */}
+        <FormItem>
+          <Button style={{ marginLeft: 40 }} type="primary" onClick={submit}>
+            点击上传
+          </Button>
+          <Button style={{ marginLeft: 10 }} onClick={cancelUpload}>
+            取消请求
+          </Button>
+        </FormItem>
+      </Form>
       <Table rowKey="hash" columns={columns} dataSource={fileChunkList} />
     </>
   );
